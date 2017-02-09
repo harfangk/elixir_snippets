@@ -17,11 +17,11 @@ defmodule LLRBTree do
   def put(nil, _, _), do: {:error, "Key cannot be nil"}
   def put(k, _, _) when not is_integer(k), do: {:error, "Key is not of integer type"}
   def put(k, v, nil), do: {k, v, nil, nil, true}
-  def put(k, v, {node_k, _, left_child, right_child, is_red}) do
+  def put(k, v, {node_k, node_v, left_child, right_child, is_red}) do
     cond do
       k == node_k -> {k, v, left_child, right_child, is_red}
-      k  < node_k -> {k, v, put(k, v, left_child), right_child, is_red}
-      k  > node_k -> {k, v, left_child, put(k, v, right_child), is_red} 
+      k  < node_k -> {node_k, node_v, put(k, v, left_child), right_child, is_red}
+      k  > node_k -> {node_k, node_v, left_child, put(k, v, right_child), is_red} 
     end
     |> balance_tree()
   end
@@ -37,7 +37,7 @@ defmodule LLRBTree do
   @spec delete(llrb_node, integer) :: llrb_node
   def delete(nil, _), do: {:error, "Tree cannot be nil"}
   def delete(_, nil), do: {:error, "Key cannot be nil"}
-  def delete(_, k) when not is_integer(k), do: {:error, "Key is not of integer type"}
+  def delete(_, k) when (not is_integer(k)), do: {:error, "Key is not of integer type"}
   def delete({node_k, _, _, _, _} = node, k) do
     cond do
       k < node_k -> if is_lc_and_lc_lc_black(node) do
