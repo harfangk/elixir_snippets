@@ -11,11 +11,11 @@ defmodule LLRBTree do
   Node for the left-leaning red black binary search tree.
   {left_child, key, value, is_node_red, right_child}
   """
-  @type llrb_node :: {llrb_node, integer, any, boolean, llrb_node} | {:error, String.t}
+  @type llrb_node :: {llrb_node, integer, any, boolean, llrb_node} | {:error, String.t, llrb_node}
 
   @spec put(llrb_node, integer, any) :: llrb_node
-  def put(_, nil, _), do: {:error, "Key cannot be nil"}
-  def put(_, k, _) when (not is_integer(k)), do: {:error, "Key is not of integer type"}
+  def put(node, nil, _), do: {:error, "Key cannot be nil", node}
+  def put(node, k, _) when (not is_integer(k)), do: {:error, "Key is not of integer type", node}
   def put(nil, k, v), do: {nil, k, v, true, nil}
   def put({lc, node_k, node_v, is_red, rc}, k, v) do
     cond do
@@ -27,17 +27,17 @@ defmodule LLRBTree do
   end
 
   @spec get(llrb_node, integer) :: any
-  def get(_, nil), do: {:error, "Key cannot be nil"}
   def get(nil, _), do: nil
-  def get(_, k) when (not is_integer(k)), do: {:error, "Key is not of integer type"}
+  def get(node, nil), do: {:error, "Key cannot be nil", node}
+  def get(node, k) when (not is_integer(k)), do: {:error, "Key is not of integer type", node}
   def get({_, node_k, node_v, _, _}, k) when k == node_k, do: node_v
   def get({lc, node_k, _, _, _}, k) when k < node_k, do: get(lc, k)
   def get({_, node_k, _, _, rc}, k) when k > node_k, do: get(rc, k)
   
   @spec delete(llrb_node, integer) :: llrb_node
-  def delete(nil, _), do: {:error, "Tree cannot be nil"}
-  def delete(_, nil), do: {:error, "Key cannot be nil"}
-  def delete(_, k) when (not is_integer(k)), do: {:error, "Key is not of integer type"}
+  def delete(nil, _), do: {:error, "Tree cannot be nil", nil}
+  def delete(node, nil), do: {:error, "Key cannot be nil", node}
+  def delete(node, k) when (not is_integer(k)), do: {:error, "Key is not of integer type", node}
   def delete({_, node_k, _, _, _} = node, k) do
     cond do
       k < node_k -> if is_lc_and_lc_lc_black(node) do
