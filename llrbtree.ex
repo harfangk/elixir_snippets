@@ -40,13 +40,13 @@ defmodule LLRBTree do
   def delete(node, k) when (not is_integer(k)), do: {:error, "Key is not of integer type", node}
   def delete({_, node_k, _, _, _} = node, k) do
     cond do
-      k < node_k -> if is_lc_and_lc_lc_black(node) do
+      k < node_k -> if not is_lc_red(node) and not is_lc_lc_red(node) do
                       node |> move_red_left() |> replace_lc_with_delete_lc(k) |> balance_tree()
                     else
                       node |> replace_lc_with_delete_lc(k) |> balance_tree()
                     end
       k > node_k -> node = if is_lc_red(node) do rotate_right(node) else node end 
-                    node = if is_rc_and_rc_lc_black(node) do move_red_right(node) else node end
+                    node = if not is_rc_red(node) and not is_rc_lc_red(node) do move_red_right(node) else node end
                     node |> replace_rc_with_delete_rc(k) |> balance_tree()
       k == node_k -> node = if is_lc_red(node) do rotate_right(node) else node end
                      node |> do_delete() |> balance_tree()
@@ -76,22 +76,22 @@ defmodule LLRBTree do
 
     case node do
       {_, _, _, _, nil} -> nil
-      _ -> if is_rc_and_rc_lc_black(node) do
-              node |> move_red_right() |> replace_lc_with_delete_max_lc() |> balance_tree()
+      _ -> if not is_rc_red(node) and not is_rc_lc_red(node) do
+              node |> move_red_right() |> replace_rc_with_delete_max_rc() |> balance_tree()
            else
-              node |> replace_lc_with_delete_max_lc() |> balance_tree()
+              node |> replace_rc_with_delete_max_rc() |> balance_tree()
            end 
     end
   end
 
-  defp replace_lc_with_delete_max_lc({lc, k, v, is_red, rc}), do: {delete_max(lc), k, v, is_red, rc}
+  defp replace_rc_with_delete_max_rc({lc, k, v, is_red, rc}), do: {lc, k, v, is_red, delete_max(rc)}
 
   @spec delete_min(llrb_node) :: llrb_node
   def delete_min(nil), do: nil
-  def delete_min({lc, _, _, _, _} = node) do
-    case lc do
-      nil -> nil
-      _ -> if is_lc_and_lc_lc_black(node) do
+  def delete_min(node) do
+    case node do
+      {nil, _, _, _, _} -> nil
+      _ -> if not is_lc_red(node) and not is_lc_lc_red(node) do
              node |> move_red_left() |> replace_lc_with_delete_min_lc() |> balance_tree()
            else
              node |> replace_lc_with_delete_min_lc() |> balance_tree()
@@ -109,76 +109,74 @@ defmodule LLRBTree do
     end
   end
 
-  defp rotate_left({parent_lc, parent_k, parent_v, parent_is_red, parent_rc}) do
-    {rc_lc, rc_k, rc_v, rc_is_red, rc_rc} = parent_rc
-    {{parent_lc, parent_k, parent_v, rc_is_red, rc_lc}, rc_k, rc_v, parent_is_red, rc_rc}
+  defp rotate_left({lc, k, v, is_red, rc}) do
+    {rc_lc, rc_k, rc_v, _, rc_rc} = rc
+    {{lc, k, v, true, rc_lc}, rc_k, rc_v, is_red, rc_rc}
   end
 
-  defp rotate_right({parent_lc, parent_k, parent_v, parent_is_red, parent_rc}) do
-    {lc_lc, lc_k, lc_v, lc_is_red, lc_rc} = parent_lc
-    {lc_lc, lc_k, lc_v, parent_is_red, {lc_rc, parent_k, parent_v, lc_is_red, parent_rc}}
+  defp rotate_right({lc, k, v, is_red, rc}) do
+    {lc_lc, lc_k, lc_v, _, lc_rc} = lc
+    {lc_lc, lc_k, lc_v, is_red, {lc_rc, k, v, true, rc}}
   end
 
-  defp flip_color({parent_lc, parent_k, parent_v, parent_is_red, parent_rc}) do
-    {lc_lc, lc_k, lc_v, lc_is_red, lc_rc} = parent_lc
-    {rc_lc, rc_k, rc_v, rc_is_red, rc_rc} = parent_rc
-    {{lc_lc, lc_k, lc_v, not lc_is_red, lc_rc}, parent_k, parent_v, not parent_is_red, {rc_lc, rc_k, rc_v, not rc_is_red, rc_rc}}
+  defp flip_color({lc, k, v, is_red, rc}) do
+    {lc_lc, lc_k, lc_v, lc_is_red, lc_rc} = lc
+    {rc_lc, rc_k, rc_v, rc_is_red, rc_rc} = rc
+    {{lc_lc, lc_k, lc_v, not lc_is_red, lc_rc}, k, v, not is_red, {rc_lc, rc_k, rc_v, not rc_is_red, rc_rc}}
   end
 
-  defp is_rc_red(nil), do: false
-  defp is_rc_red({_, _, _, _, nil}), do: false
-  defp is_rc_red({_, _, _, _, {_, _, _, true, _}}), do: true
-  defp is_rc_red(_), do: false
+  defp get_lc(nil), do: nil
+  defp get_lc({lc, _, _, _, _}), do: lc
 
-  defp is_lc_red(nil), do: false
-  defp is_lc_red({nil, _, _, _, _}), do: false
-  defp is_lc_red({{_, _, _, true, _}, _, _, _, _}), do: true
-  defp is_lc_red(_), do: false
+  defp get_rc(nil), do: nil
+  defp get_rc({_, _, _, _, rc}), do: rc
 
-  defp is_lc_and_lc_lc_red(nil), do: false
-  defp is_lc_and_lc_lc_red({nil, _, _, _, _}), do: false
-  defp is_lc_and_lc_lc_red({{nil, _, _, _, _}, _, _, _, _}), do: false
-  defp is_lc_and_lc_lc_red({{{_, _, _, true, _}, _, _, true, _}, _, _, _, _}), do: true
-  defp is_lc_and_lc_lc_red(_), do: false
+  defp is_red(nil), do: false
+  defp is_red({_, _, _, false, _}), do: false
+  defp is_red({_, _, _, true, _}), do: true
 
-  defp is_lc_and_lc_lc_black(nil), do: false
-  defp is_lc_and_lc_lc_black({nil, _, _, _, _}), do: false
-  defp is_lc_and_lc_lc_black({{nil, _, _, _, _}, _, _, _, _}), do: false
-  defp is_lc_and_lc_lc_black({{{_, _, _, false, _}, _, _, false, _}, _, _, _, _}), do: true
-  defp is_lc_and_lc_lc_black(_), do: false
+  defp is_lc_red(node) do
+    node
+    |> get_lc()
+    |> is_red()
+  end
 
-  defp is_rc_lc_red(nil), do: false
-  defp is_rc_lc_red({_, _, _, _, nil}), do: false
-  defp is_rc_lc_red({_, _, _, _, {nil, _, _, _, _}}), do: false
-  defp is_rc_lc_red({_, _, _, _, {{_, _, _, true, _}, _, _, _, _}}), do: true
-  defp is_rc_lc_red(_), do: false
+  defp is_rc_red(node) do
+    node
+    |> get_rc()
+    |> is_red()
+  end
 
-  defp is_rc_and_rc_lc_black(nil), do: false
-  defp is_rc_and_rc_lc_black({_, _, _, _, nil}), do: false
-  defp is_rc_and_rc_lc_black({_, _, _, _, {nil, _, _, _, _}}), do: false
-  defp is_rc_and_rc_lc_black({_, _, _, _, {{_, _, _, false, _}, _, _, false, _}}), do: true
-  defp is_rc_and_rc_lc_black(_), do: false
+  defp is_lc_lc_red(node) do
+    node
+    |> get_lc()
+    |> get_lc()
+    |> is_red()
+  end
 
-  defp is_lc_and_rc_red(nil), do: false
-  defp is_lc_and_rc_red({nil, _, _, _, _}), do: false
-  defp is_lc_and_rc_red({_, _, _, _, nil}), do: false
-  defp is_lc_and_rc_red({{_, _, _, true, _}, _, _, _, {_, _, _, true, _}}), do: true
-  defp is_lc_and_rc_red(_), do: false
+  defp is_rc_lc_red(node) do
+    node
+    |> get_rc()
+    |> get_lc()
+    |> is_red()
+  end
 
   defp balance_tree(nil), do: nil
   defp balance_tree(node) do
     node = if is_rc_red(node) do rotate_left(node) else node end
-    node = if is_lc_and_lc_lc_red(node) do rotate_right(node) else node end
-    if is_lc_and_rc_red(node) do flip_color(node) else node end
+    node = if is_lc_red(node) and is_lc_lc_red(node) do rotate_right(node) else node end
+    if is_lc_red(node) and is_rc_red(node) do flip_color(node) else node end
   end
 
   defp move_red_right(nil), do: nil
   defp move_red_right(node) do
     node = flip_color(node)
-    if is_lc_and_lc_lc_red(node) do
+    if is_lc_lc_red(node) do
       node
       |> rotate_right()
       |> flip_color()
+    else
+      node
     end
   end
 
@@ -190,6 +188,8 @@ defmodule LLRBTree do
       {lc, k, v, is_red, rotate_right(rc)}
       |> rotate_left()
       |> flip_color()
+    else
+      node
     end
   end
 end
