@@ -109,6 +109,21 @@ defmodule LLRBTree do
     end
   end
 
+  # ceiling
+  # contains
+  # floor
+  # keys
+  # max
+  # min
+  # rank
+  # size
+  # p isbalanced
+  # p is23
+  # p issizeconsistent
+  # p isrankconsistent
+  # p isbst
+
+
   defp rotate_left({lc, k, v, is_red, rc}) do
     {rc_lc, rc_k, rc_v, _, rc_rc} = rc
     {{lc, k, v, true, rc_lc}, rc_k, rc_v, is_red, rc_rc}
