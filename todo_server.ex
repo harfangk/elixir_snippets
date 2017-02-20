@@ -1,3 +1,42 @@
+defmodule TodoServer do
+  def start do
+    server = spawn(fn -> loop(TodoList.new) end)
+    Process.register(server, :todo_server)
+    server
+  end
+
+  def add_entry(entry), do: add_entry(:todo_server, entry)
+  def add_entry(server_pid, entry) do
+    send(server_pid, {:add, entry})
+  end
+
+  def entries(date), do: entries(:todo_server, date)
+  def entries(server_pid, date) do
+    send(server_pid, {:entries, self(), date})
+    receive do
+      {:todo_entries, entries} -> entries
+    after 5000 -> {:error, :timeout}
+    end
+  end
+
+  defp loop(todo_list) do
+    new_todo_list = 
+      receive do
+        message -> process_message(todo_list, message)
+      end
+    loop(new_todo_list)
+  end
+
+  defp process_message(todo_list, {:add, entry}) do
+    TodoList.add_entry(todo_list, entry)
+  end
+
+  defp process_message(todo_list, {:entries, caller, date}) do
+    send(caller, {:todo_entries, TodoList.entries(todo_list, date)})
+    todo_list
+  end
+end
+
 defmodule TodoList do
   defstruct auto_id: 1, entries: Map.new
 
