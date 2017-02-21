@@ -37,15 +37,11 @@ defmodule KeyValueStore do
   def put(pid, key, value), do: ServerProcess.cast(pid, {:put, key, value})
   def get(pid, key), do: ServerProcess.call(pid, {:get, key})
   
-  def handle_call({:put, key, value}, state) do
-    {:ok, Map.put(state, key, value)}
+  def handle_cast({:put, key, value}, state) do
+    Map.put(state, key, value)
   end
 
   def handle_call({:get, key}, state) do
-    {Map.get(state, key), state}
-  end
-  
-  def handle_cast({:get, key}, state) do
     {Map.get(state, key), state}
   end
 end

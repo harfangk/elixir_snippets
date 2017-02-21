@@ -1,39 +1,21 @@
 defmodule TodoServer do
-  def start do
-    server = spawn(fn -> loop(TodoList.new) end)
-    Process.register(server, :todo_server)
-    server
+  def init(), do: TodoList.new()
+  def start(), do: ServerProcess.start(TodoServer)
+
+  def add_entry(pid, entry), do: ServerProcess.cast(pid, {:add_entry, entry})
+  def entries(pid, date), do: ServerProcess.call(pid, {:entries, date})
+  def update_entry(pid, new_entry), do: ServerProcess.cast(pid, {:update_entry, new_entry})
+
+  def handle_cast({:add_entry, entry}, state) do
+    TodoList.add_entry(state, entry)
   end
 
-  def add_entry(entry), do: add_entry(:todo_server, entry)
-  def add_entry(server_pid, entry) do
-    send(server_pid, {:add, entry})
+  def handle_call({:entries, date}, state) do
+    {TodoList.entries(state, date), state}
   end
 
-  def entries(date), do: entries(:todo_server, date)
-  def entries(server_pid, date) do
-    send(server_pid, {:entries, self(), date})
-    receive do
-      {:todo_entries, entries} -> entries
-    after 5000 -> {:error, :timeout}
-    end
-  end
-
-  defp loop(todo_list) do
-    new_todo_list = 
-      receive do
-        message -> process_message(todo_list, message)
-      end
-    loop(new_todo_list)
-  end
-
-  defp process_message(todo_list, {:add, entry}) do
-    TodoList.add_entry(todo_list, entry)
-  end
-
-  defp process_message(todo_list, {:entries, caller, date}) do
-    send(caller, {:todo_entries, TodoList.entries(todo_list, date)})
-    todo_list
+  def handle_cast({:update_entry, new_entry}, state) do
+    TodoList.update_entry(state, new_entry)
   end
 end
 
