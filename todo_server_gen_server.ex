@@ -72,7 +72,7 @@ defmodule TodoServer do
     {:noreply, new_state}
   end
 
-  def handle_call({:entries, date}, todo_list) do
+  def handle_call({:entries, date}, _, todo_list) do
     {:reply, TodoList.entries(todo_list, date), todo_list}
   end
 end
